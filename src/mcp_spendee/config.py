@@ -13,7 +13,7 @@ class ConfigurationError(RuntimeError):
 class Settings:
     email: str | None
     password: str | None
-    timezone: str = "Europe/Moscow"
+    timezone: str = "Europe/Helsinki"
     global_currency: str = "EUR"
 
     @classmethod
@@ -21,7 +21,7 @@ class Settings:
         return cls(
             email=os.getenv("SPENDEE_EMAIL"),
             password=os.getenv("SPENDEE_PASSWORD"),
-            timezone=os.getenv("SPENDEE_TIMEZONE", "Europe/Moscow"),
+            timezone=os.getenv("SPENDEE_TIMEZONE", "Europe/Helsinki"),
             global_currency=os.getenv("SPENDEE_GLOBAL_CURRENCY", "EUR").upper(),
         )
 

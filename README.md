@@ -2,8 +2,8 @@
 
 An unofficial Model Context Protocol (MCP) server for
 [Spendee](https://www.spendee.com/). It lets MCP clients inspect wallets,
-categories, and transactions, create income or expense transactions, and move
-existing transactions between manual wallets.
+categories, and transactions. This fork is read-only: it exposes no tools that
+create, modify, or move transactions.
 
 > [!WARNING]
 > Spendee does not publish a supported public API. This server uses a
@@ -18,59 +18,10 @@ existing transactions between manual wallets.
 - `list_labels` — list modern Spendee labels stored in Firestore.
 - `list_categories` — list and optionally filter categories.
 - `list_transactions` — list and optionally filter transactions.
-- `create_transaction` — preview or create an expense/income transaction,
-  optionally with existing modern labels and an amount in a currency different
-  from the selected wallet.
-- `move_transaction` — preview or move one existing transaction to another wallet.
 
-Creating a transaction is deliberately two-step. Call `create_transaction` once
-with `confirm=false` to inspect the normalized payload, then repeat it with
-`confirm=true` and a unique `request_id`. Reusing a request ID in the same
-server process returns the cached result instead of creating a duplicate.
-Wallet routing is a client responsibility; the server does not encode personal
-rules for wallet names, transaction purposes, currencies, or dates.
 Wallet and category IDs are legacy integers when Spendee still provides them;
 newer resources use Firestore UUID strings. Both forms are accepted by
-`list_categories`, `list_transactions`, and `create_transaction`.
-
-Before a confirmed write, the server compares the complete normalized
-transaction with current Firestore data: wallet, category, amount, type, note,
-date and foreign-currency fields. An exact match returns `status=existing`
-instead of creating another transaction, even when a retry uses a different
-`request_id` or the server has restarted. If the retry adds labels, the server
-applies them to the existing transaction.
-When two source operations genuinely have identical fields, the caller can set
-`allow_duplicate=true` only after the user explicitly confirms that both are
-separate charges.
-
-The forked `spendee` library owns both the modern Firestore transaction and
-label writes. If label attachment fails after transaction creation, a
-retry with the same `request_id` retries only the labels and does not create the
-transaction twice.
-
-For a foreign-currency transaction, pass the original positive `amount` and its
-ISO `currency`. The preview resolves Spendee's current exchange rate and shows
-both the wallet amount and the original amount. Repeat the confirmed call with
-the preview's `foreign_rate` in `exchange_rate`; this pins the exact conversion
-that was reviewed instead of silently fetching a newer rate.
-
-## Moving an existing transaction
-
-Use `source_wallet_id` and `target_wallet_id` from `list_wallets` and the
-`transaction_id` from `list_transactions`. Call `move_transaction` without
-`preview_token` first. Verify both wallet names and the transaction details,
-then call it with the same IDs and the returned token. After a timeout, retry
-with the same token. If the original is gone and the destination matches the
-preview, the retry returns `already_moved`.
-
-The wallets must be active manual wallets under the current user's account
-and have the same currency. Only regular transactions in the known Firestore
-schema are supported. The move preserves the transaction ID, amount, original
-currency and exchange rate, category, date, note and label relations. Firestore
-creates the destination and deletes the source in one atomic commit, with
-preconditions to prevent overwriting existing documents or deleting documents
-that changed after the read. The server verifies the result by reading both
-wallets.
+`list_categories` and `list_transactions`.
 
 ## Transaction history and dates
 
@@ -81,7 +32,7 @@ and `offset` apply per wallet; omit `wallet_id` to query each wallet separately.
 
 - `date_from` / `date_to` as `YYYY-MM-DD` include the entire UTC calendar days.
 - Timestamps must include `Z` or a UTC offset; the start is inclusive and the
-  end exclusive. Naive timestamps are rejected, not interpreted in Moscow time.
+  end exclusive. Naive timestamps are rejected, not interpreted in a default timezone.
 - `limit=null` requires both date bounds and returns the complete period.
   Internal pages use a cursor and a fixed read snapshot. A failed page fails the
   whole call, never returning an apparently complete partial result.
@@ -145,12 +96,12 @@ Set credentials in the MCP client environment. Do not commit a `.env` file:
 ```text
 SPENDEE_EMAIL=you@example.com
 SPENDEE_PASSWORD=your-password
-SPENDEE_TIMEZONE=Europe/Moscow
+SPENDEE_TIMEZONE=Europe/Helsinki
 SPENDEE_GLOBAL_CURRENCY=EUR
 ```
 
 `SPENDEE_TIMEZONE` and `SPENDEE_GLOBAL_CURRENCY` are optional. They default to
-`Europe/Moscow` and `EUR`.
+`Europe/Helsinki` and `EUR`.
 
 ## MCP client configuration
 
@@ -170,7 +121,7 @@ Use the absolute path to the cloned checkout:
       "env": {
         "SPENDEE_EMAIL": "you@example.com",
         "SPENDEE_PASSWORD": "your-password",
-        "SPENDEE_TIMEZONE": "Europe/Moscow",
+        "SPENDEE_TIMEZONE": "Europe/Helsinki",
         "SPENDEE_GLOBAL_CURRENCY": "EUR"
       }
     }

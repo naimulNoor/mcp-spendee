@@ -18,9 +18,7 @@ from mcp_spendee.diagnostics import CallTrace, configure_logging, current_trace,
 mcp = FastMCP(
     "Spendee",
     instructions=(
-        "Read personal finance data from Spendee. Preview move_transaction before passing its "
-        "preview_token. Always preview create_transaction "
-        "before confirming it, and use a unique request_id for each intended write."
+        "Read personal finance data from Spendee. This server is read-only."
     ),
 )
 
@@ -42,7 +40,6 @@ async def _run_tool(function: Callable[..., Any], **kwargs: Any) -> Any:
             "tool_start",
             tool=function.__name__,
             mcp_request_id=request_id,
-            confirm=kwargs.get("confirm") if function.__name__ == "create_transaction" else None,
         )
 
         def worker() -> Any:
@@ -138,7 +135,7 @@ async def list_transactions(
 
     date_from/date_to accept YYYY-MM-DD (inclusive UTC calendar dates) or
     ISO timestamps with an explicit offset (inclusive start, exclusive end).
-    There is no implicit Moscow timezone for these filters. For duplicate
+    There is no implicit timezone for these filters. For duplicate
     prechecks use source dates with a one-day margin on each side, a wallet_id,
     include_labels=false and limit=null to fetch the complete date range.
     limit=null requires both bounds. Otherwise limit (1..1000, default 100)
@@ -152,75 +149,6 @@ async def list_transactions(
         include_labels=include_labels,
         date_from=date_from,
         date_to=date_to,
-    )
-
-
-@mcp.tool()
-async def create_transaction(
-    wallet_id: ResourceId,
-    category_id: ResourceId,
-    amount: float,
-    transaction_type: TransactionType,
-    note: str | None = None,
-    labels: list[str] | None = None,
-    occurred_at: str | None = None,
-    currency: str | None = None,
-    exchange_rate: float | None = None,
-    allow_duplicate: bool = False,
-    confirm: bool = False,
-    request_id: str | None = None,
-) -> dict[str, Any]:
-    """Preview or create a transaction.
-
-    Amount must always be positive. transaction_type controls whether Spendee
-    receives a negative expense or positive income. currency defaults to the
-    selected wallet's currency. For a different currency, preview without an
-    exchange_rate first, then confirm with the returned foreign_rate as
-    exchange_rate. First call with confirm=false; create only after checking
-    the preview, then pass confirm=true and a unique request_id. Exact content
-    is deduplicated against Firestore unless allow_duplicate=true; use that
-    override only after the user confirms two genuinely separate identical
-    operations.
-    """
-    return await _run_tool(
-        _gateway.create_transaction,
-        wallet_id=wallet_id,
-        category_id=category_id,
-        amount=amount,
-        transaction_type=transaction_type,
-        note=note,
-        labels=labels,
-        occurred_at=occurred_at,
-        currency=currency,
-        exchange_rate=exchange_rate,
-        allow_duplicate=allow_duplicate,
-        confirm=confirm,
-        request_id=request_id,
-    )
-
-
-@mcp.tool()
-async def move_transaction(
-    source_wallet_id: ResourceId,
-    target_wallet_id: ResourceId,
-    transaction_id: str,
-    preview_token: str | None = None,
-) -> dict[str, Any]:
-    """Preview or move one existing regular transaction between manual wallets.
-
-    Wallet currencies must match. Use IDs from list_wallets and list_transactions.
-    First omit preview_token. Check the source, destination and expense details
-    in the preview, then pass its preview_token with the same IDs to commit.
-    The move preserves the ID, category, dates, original exchange rate and
-    labels. Retry an uncertain result with the same IDs and preview_token.
-    This tool does not create a transfer or convert currency.
-    """
-    return await _run_tool(
-        _gateway.move_transaction,
-        source_wallet_id=source_wallet_id,
-        target_wallet_id=target_wallet_id,
-        transaction_id=transaction_id,
-        preview_token=preview_token,
     )
 
 

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "mcp-spendee"
 version = "0.1.0"
-description = "An MCP server for reading and creating Spendee transactions"
+description = "An MCP server for reading Spendee data (read-only)"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -23,7 +23,7 @@ classifiers = [
 ]
 dependencies = [
     "mcp>=1.27,<2",
-    "spendee @ git+https://github.com/gibsn/spendee.git@6cd07cd5e4fba94861f431636c1f021e6b111107",
+    "spendee @ git+https://github.com/naimulNoor/spendee.git@6cd07cd5e4fba94861f431636c1f021e6b111107",
 ]
 
 [project.scripts]
